@@ -1,0 +1,20 @@
+{
+  "name": "flowchart-programming-tool",
+  "version": "1.0.0",
+  "description": "A tool for creating multi-threaded programs using flowcharts",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["flowchart", "multi-threading", "programming", "visualization"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1",
+    "ejs": "^3.1.9",
+    "body-parser": "^1.20.2",
+    "fs-extra": "^11.1.1"
+  }
+}

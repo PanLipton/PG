@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Інструмент для програмування блок-схем</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/jsplumb@2.15.6/dist/js/jsplumb.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+</head>
+<body>
+  <div class="container-fluid">
+    <div class="row header">
+      <div class="col-12">
+        <h1>Інструмент для програмування блок-схем</h1>
+        <div class="btn-toolbar">
+          <button id="newFlowchart" class="btn btn-primary me-2">Нова блок-схема</button>
+          <button id="saveFlowchart" class="btn btn-success me-2">Зберегти</button>
+          <button id="loadFlowchart" class="btn btn-info me-2">Завантажити</button>
+          <button id="generateCode" class="btn btn-warning me-2">Генерувати код</button>
+          <button id="testMenu" class="btn btn-secondary">Тестування</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row main-content">
+      <!-- Бічна панель / Панель властивостей -->
+      <div class="col-md-3 sidebar">
+        <div class="card">
+          <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="sidebarTabs" role="tablist">
+              <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="threads-tab" data-bs-toggle="tab" data-bs-target="#threads" type="button" role="tab">Потоки</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="variables-tab" data-bs-toggle="tab" data-bs-target="#variables" type="button" role="tab">Змінні</button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button class="nav-link" id="properties-tab" data-bs-toggle="tab" data-bs-target="#properties" type="button" role="tab">Властивості</button>
+              </li>
+            </ul>
+          </div>
+          <div class="card-body">
+            <div class="tab-content" id="sidebarTabContent">
+              <!-- Вкладка потоків -->
+              <div class="tab-pane fade show active" id="threads" role="tabpanel">
+                <div class="mb-3">
+                  <button id="addThread" class="btn btn-sm btn-primary">Додати потік</button>
+                </div>
+                <div id="threadsList" class="list-group">
+                  <!-- Елементи потоків будуть додані тут динамічно -->
+                  <a href="#" class="list-group-item list-group-item-action active" data-thread-id="1">Потік 1</a>
+                </div>
+              </div>
+              
+              <!-- Вкладка змінних -->
+              <div class="tab-pane fade" id="variables" role="tabpanel">
+                <div class="mb-3">
+                  <input type="text" id="newVarName" class="form-control form-control-sm" placeholder="Назва змінної">
+                  <button id="addVariable" class="btn btn-sm btn-primary mt-2">Додати змінну</button>
+                </div>
+                <div id="variablesList" class="list-group">
+                  <!-- Елементи змінних будуть додані тут динамічно -->
+                </div>
+              </div>
+              
+              <!-- Вкладка властивостей -->
+              <div class="tab-pane fade" id="properties" role="tabpanel">
+                <div id="propertiesContent">
+                  <!-- Властивості вибраних блоків з'являться тут -->
+                  <p class="text-muted">Виберіть блок або з'єднання для перегляду/редагування властивостей</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Палітра блоків -->
+        <div class="card mt-3">
+          <div class="card-header">Палітра блоків</div>
+          <div class="card-body block-palette">
+            <div class="palette-item start-block" data-block-type="start">Початок</div>
+            <div class="palette-item end-block" data-block-type="end">Кінець</div>
+            <div class="palette-item process-block" data-block-type="assignment">Присвоєння</div>
+            <div class="palette-item io-block" data-block-type="input">Ввід</div>
+            <div class="palette-item io-block" data-block-type="output">Вивід</div>
+            <div class="palette-item decision-block" data-block-type="decision">Умова</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Полотно / Редактор блок-схем -->
+      <div class="col-md-9 canvas-container">
+        <div class="flowchart-info">
+          <span id="currentThreadLabel">Потік 1</span>
+        </div>
+        <div id="flowchartCanvas" class="flowchart-canvas">
+          <!-- Блоки блок-схеми будуть додані тут динамічно -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальні вікна -->
+  <!-- Модальне вікно збереження блок-схеми -->
+  <div class="modal fade" id="saveModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Зберегти блок-схему</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрити"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="flowchartName" class="form-label">Назва блок-схеми</label>
+            <input type="text" class="form-control" id="flowchartName">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+          <button type="button" class="btn btn-primary" id="saveFlowchartConfirm">Зберегти</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальне вікно завантаження блок-схеми -->
+  <div class="modal fade" id="loadModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Завантажити блок-схему</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрити"></button>
+        </div>
+        <div class="modal-body">
+          <div class="list-group" id="flowchartsList">
+            <!-- Збережені блок-схеми будуть перераховані тут -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Скасувати</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальне вікно генерації коду -->
+  <div class="modal fade" id="generateCodeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Генерувати код</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрити"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label for="codeLanguage" class="form-label">Цільова мова</label>
+            <select class="form-select" id="codeLanguage">
+              <option value="python">Python</option>
+              <option value="csharp">C#</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Згенерований код</label>
+            <pre id="generatedCode" class="border p-3 bg-light" style="max-height: 300px; overflow-y: auto;">// Код з'явиться тут після генерації</pre>
+          </div>
+          <div class="mb-3">
+            <button id="downloadCode" class="btn btn-primary">Завантажити код</button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Модальне вікно тестування -->
+  <div class="modal fade" id="testingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Тестування</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрити"></button>
+        </div>
+        <div class="modal-body">
+          <ul class="nav nav-tabs" id="testingTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button class="nav-link active" id="create-test-tab" data-bs-toggle="tab" data-bs-target="#create-test" type="button" role="tab">Створити тест</button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button class="nav-link" id="run-test-tab" data-bs-toggle="tab" data-bs-target="#run-test" type="button" role="tab">Запустити тести</button>
+            </li>
+          </ul>
+          <div class="tab-content mt-3" id="testingTabContent">
+            <!-- Вкладка створення тесту -->
+            <div class="tab-pane fade show active" id="create-test" role="tabpanel">
+              <div class="mb-3">
+                <label for="testName" class="form-label">Назва тесту</label>
+                <input type="text" class="form-control" id="testName">
+              </div>
+              <div class="mb-3">
+                <label for="testInput" class="form-label">Вхідні дані (одне значення на рядок)</label>
+                <textarea class="form-control" id="testInput" rows="3"></textarea>
+              </div>
+              <div class="mb-3">
+                <label for="testExpectedOutput" class="form-label">Очікуваний результат</label>
+                <textarea class="form-control" id="testExpectedOutput" rows="3"></textarea>
+              </div>
+              <button id="saveTest" class="btn btn-primary">Зберегти тест</button>
+            </div>
+
+            <!-- Вкладка запуску тестів -->
+            <div class="tab-pane fade" id="run-test" role="tabpanel">
+              <div class="mb-3">
+                <label for="testSelect" class="form-label">Вибрати тест</label>
+                <select class="form-select" id="testSelect">
+                  <!-- Варіанти тестів будуть додані тут -->
+                </select>
+              </div>
+              <button id="runTest" class="btn btn-primary mb-3">Запустити тест</button>
+              
+              <div id="testResults" class="border p-3 bg-light" style="max-height: 200px; overflow-y: auto; display: none;">
+                <h6>Результати тесту:</h6>
+                <div id="testResultContent"></div>
+              </div>
+              
+              <div id="nonDeterministicOptions" style="display: none;" class="mt-3">
+                <p>Ця програма є недетермінованою.</p>
+                <button id="stopTesting" class="btn btn-warning me-2">Зупинити тестування</button>
+                <div class="input-group mt-2 mb-2" style="max-width: 300px;">
+                  <input type="number" class="form-control" id="maxOperations" min="1" max="20" value="5">
+                  <button class="btn btn-outline-secondary" id="checkCoverage">Перевірити покриття</button>
+                </div>
+                <div id="coverageResult" class="mt-2"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрити</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="/js/flowchart.js"></script>
+  <script src="/js/ui.js"></script>
+  <script src="/js/codeGenerator.js"></script>
+  <script src="/js/testing.js"></script>
+</body>
+</html> 
